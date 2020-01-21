@@ -3,7 +3,7 @@
 To create environment from the 'projeto_ela_env.yml' file:
 * conda env create -f projeto_ela_env.yml
 
-To create evirnment from scrach, run the following lines:
+To create evirnment from scratch, run the following lines:
 1. conda create -n projeto_ela python=3.6
 2. conda install -c conda-forge opencv=3.4.3
 3. conda install -c conda-forge pywin32
