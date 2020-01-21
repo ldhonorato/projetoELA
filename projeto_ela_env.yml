@@ -1,0 +1,14 @@
+name: projeto_ela2
+channels:
+  - defaults
+dependencies:
+  - python=3.6
+  - opencv=3.4.3
+  - pywin32
+  - dlib
+  - pylint
+  - scipy
+  - pyautogui
+  - rope
+prefix: C:\Users\ldhon\.conda\envs\projeto_ela2
+
