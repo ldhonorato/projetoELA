@@ -4,6 +4,7 @@ import dlib
 import timeit
 import math
 from gui import UserInterface
+from direcao import Direction
 # from videocaptureasync import VideoCaptureAsync
 
 class EyeTrack:
@@ -18,6 +19,8 @@ class EyeTrack:
         self.vid = cv2.VideoCapture(0)
 
         self.gui = gui
+
+        self.calibracao = {}
         
     def startVideoCapture(self):
         self.vid.start()
@@ -29,7 +32,7 @@ class EyeTrack:
         return self.vid.read()
     
     def updateCalibracao(self, calibracao):
-        pass
+        self.calibracao = calibracao
 
     def capturarCoordenadas(self, numFrames=10, delay_ms=100, debug=False):
         """
@@ -42,6 +45,7 @@ class EyeTrack:
         Return:
         list: retorna a média das coordenadas [x,y] do centro do olho esquerdo
         """
+        coords = {}
         center_r = []
         center_l = []
         lelc_coord = []
@@ -60,6 +64,8 @@ class EyeTrack:
         redn=47
         relc=42
 
+        # landmarksDetected = False
+
         for _ in range(numFrames):
             _, frame = self.vid.read()
             
@@ -67,19 +73,19 @@ class EyeTrack:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         
             faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)
-            if(len(faces) > 1):
-                break
+            if len(faces) != 1:
+                return coords, frame
             
             for (x,y,w,h) in faces:
-                #cv2.rectangle(frame,(x,y),(x+w,y+h),(255,0,0),1)
+                cv2.rectangle(frame,(x,y),(x+w,y+h),(255,0,0),1)
                 gray=gray[y:y+h,x:x+w]
                 newf=frame[y:y+h,x:x+w]
                 clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
                 clahe_image = clahe.apply(gray)
         
                 detections = self.detector(clahe_image, 1) #Detect the faces in the image
-        
-                for _,d in enumerate(detections): #For each detected face
+                
+                for d in detections: #For each detected face
                     
                     shape = self.predictor(clahe_image, d) #Get coordinates
                     
@@ -91,8 +97,8 @@ class EyeTrack:
                         # left eye corners
                         cv2.circle(newf, (shape.part(lelc).x, shape.part(lelc).y), 1, (0,0,255), thickness=1)
                         cv2.circle(newf, (shape.part(lerc).x, shape.part(lerc).y), 1, (0,0,255), thickness=1)
-                        cv2.circle(newf, (shape.part(rerc).x, shape.part(rerc).y), 1, (0,0,255), thickness=1) #For each point, draw a red circle with thickness2 on the original frame
-                        cv2.circle(newf, (shape.part(relc).x, shape.part(relc).y), 1, (0,0,255), thickness=1)
+                        cv2.circle(newf, (shape.part(rerc).x, shape.part(rerc).y), 1, (255,0,255), thickness=1) #For each point, draw a red circle with thickness2 on the original frame
+                        cv2.circle(newf, (shape.part(relc).x, shape.part(relc).y), 1, (0,255,0), thickness=1)
 
                     #-------- making left eye configuration --------------------------#
                     lefleftcorn_x_axis=shape.part(lelc).x+x # +x is done for absolute value on screen
@@ -168,8 +174,6 @@ class EyeTrack:
         if not debug:
             frame = 0
         
-        coords = {}
-        
         coords['center_l'] = center_l
         coords['center_r'] = center_r
         coords['lelc'] = lelc_coord
@@ -177,17 +181,14 @@ class EyeTrack:
         coords['relc'] = relc_coord
         coords['rerc'] = rerc_coord
 
-        for k in coords:
-            if math.isnan(coords[k]):
-                coords[k] = 0
+        # for k in coords:
+        #     if math.isnan(coords[k]):
+        #         coords[k] = 0
 
         return coords, frame
-    
-    def getEyeDirection(self, coords):
-        
-        #----------------Verifica direcao olho esquerdo------------------#
-        direcao_esquerda = -1
-        
+        # return coords, cv2.flip(frame,1)
+
+    def calculateDistances(self, coords):
         lelc_coord = np.array(coords['lelc'])
         lerc_coord = np.array(coords['lerc'])
         center_l = np.array(coords['center_l'])
@@ -195,58 +196,66 @@ class EyeTrack:
         rerc_coord = np.array(coords['rerc'])
         center_r = np.array(coords['center_r'])
 
-        le_size = lerc_coord[0] - lelc_coord[0]
-        le_pos = center_l[0] - lelc_coord[0]
-        le = le_pos/le_size
-
-        re_size = rerc_coord[0] - relc_coord[0]
-        re_pos = center_r[0] - relc_coord[0]
-        re = re_pos/re_size
-
-        print('re =',re)
-        print('le =',le)
-
-        le_size = lerc_coord[0] - lelc_coord[0]
-        le_pos = lerc_coord[0] - center_l[0]
-        le = le_pos/le_size
-
-        re_size = rerc_coord[0] - relc_coord[0]
-        re_pos = rerc_coord[0] -  center_r[0]
-        re = re_pos/re_size
-
-        print('re2 =',re)
-        print('le2 =',le)
-
-        #dist1 = np.linalg.norm(lelc_coord, center_l)
-        # dist1 = ((lelc_coord[0][0]-center_l[0][0])**2 + (lelc_coord[0][1]-center_l[0][1])**2)**0.5
-        #dist2 = np.linalg.norm(lerc_coord, center_l)
-        # dist2 = ((lerc_coord[0][0]-center_l[0][0])**2 + (lerc_coord[0][1]-center_l[0][1])**2)**0.5
-        # dist_div = dist1/dist2
+        dist_re_rc = ((center_r[0]-rerc_coord[0])**2 + (center_r[1]-rerc_coord[1])**2)**0.5
+        dist_re_lc = ((center_r[0]-relc_coord[0])**2 + (center_r[1]-relc_coord[1])**2)**0.5
         
-        # print('dist1=', dist1)
-        # print('dist2=', dist2)
+        dist_le_rc = ((center_l[0]-lerc_coord[0])**2 + (center_r[1]-lerc_coord[1])**2)**0.5
+        dist_le_lc = ((center_l[0]-lelc_coord[0])**2 + (center_r[1]-lelc_coord[1])**2)**0.5
 
-        # print('dist1/dist2=', dist_div)
-        # diferenca_y1 = lelc_coord[0][1] - center_l[0][1]
-        # diferenca_y2 = lerc_coord[0][1] - center_l[0][1]
-        # # if diferenca_y1 > 10 or diferenca_y2 > 10:
-        # #     # print('Baixo')
-        # #     direcao = EyeDirection.BAIXO
-        # if dist_div > self.threshold:
-        #     print('DIREITA')
-        #     direcao_esquerda = EyeDirection.DIREITA
-        # else:
-        #     if dist_div < 1:
-        #         dist_div = dist2/dist1
-        #         print('dist2/dist1=', dist_div)
-        #     if dist_div > self.threshold:
-        #         print('ESQUERDA')
-        #         direcao_esquerda = EyeDirection.ESQUERDA
-        #     else:
-        #         print('CENTRO')
-        #         direcao_esquerda = EyeDirection.CENTRO
-            
-        return direcao_esquerda
+        dist_r = dist_re_rc - dist_re_lc
+        dist_l = dist_le_rc - dist_le_lc
+
+        return dist_r, dist_l
+    
+    def calculateEyeDirection(self, currentDistance, eye=0):
+        ############ Calibracoes ############
+        if not self.calibracao:
+            return -1 #empty calibration
+
+        calibracaoCentro = self.calibracao["centro"]
+        calibracaoDireita = self.calibracao["direita"]
+        calibracaoEsquerda = self.calibracao["esquerda"]
+
+        cal_centro_eye = calibracaoCentro[eye]
+        cal_esquerda_eye = calibracaoDireita[eye]
+        cal_direita_eye = calibracaoEsquerda[eye]
+
+        cal_maior = max([cal_centro_eye, cal_esquerda_eye, cal_direita_eye])
+        cal_menor = min([cal_centro_eye, cal_esquerda_eye, cal_direita_eye])
+
+        cal_size = cal_maior - cal_menor
+        limite_direita = cal_menor + 0.2*cal_size
+        limite_esquerda = cal_menor + 0.8*cal_size
+
+        direcaoOlho = -1
+        if currentDistance < limite_direita:
+            direcaoOlho = Direction.DIREITA
+        elif currentDistance > limite_esquerda:
+            direcaoOlho = Direction.ESQUERDA
+        else:
+            direcaoOlho = Direction.CENTRO
+        
+        # print("==========================================================")
+        # print("Eye = ", eye)
+        # print("Calibracao = %f | %f | %f" % (cal_centro_eye, cal_esquerda_eye, cal_direita_eye))
+        # print("limites = %f | %f " % (limite_direita, limite_esquerda))
+        # print("distanciaAtual = ", currentDistance)
+        # print("Direcao = ", direcaoOlho)
+
+        return direcaoOlho
+
+
+    def getEyeDirection(self, coords):
+        
+        dist_r, dist_l = self.calculateDistances(coords)
+
+        direcaoOlhoDireito = self.calculateEyeDirection(dist_r, 0)
+        direcaoOlhoEsquerdo = self.calculateEyeDirection(dist_l, 1)
+        
+        if direcaoOlhoDireito == direcaoOlhoEsquerdo:
+            return direcaoOlhoDireito
+        else:
+            return -1
 
     def run(self):
         pass
@@ -254,10 +263,10 @@ class EyeTrack:
 if __name__ == '__main__':
     eyeTrack = EyeTrack(None)
     while True:
-        coords, frame = eyeTrack.capturarCoordenadas(numFrames=2, debug=True)
-        print(coords)
-        # if len(coords['center_l']) != 0:
-        #     direcao = eyeTrack.getEyeDirection(coords)
+        coords, frame = eyeTrack.capturarCoordenadas(numFrames=1, debug=True)
+        # print(coords)
+        # if coords:
+        #      direcao = eyeTrack.getEyeDirection(coords)
         cv2.imshow("image", frame) #Display the frame for debug
         if cv2.waitKey(100) & 0xFF == ord('q'): #Exit program when the user presses 'q'
             break

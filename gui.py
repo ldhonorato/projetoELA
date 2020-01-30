@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from direcao import Direction
 from win32api import GetSystemMetrics
+import pyttsx3
 
 class UserInterface:
     def __init__(self):
@@ -34,9 +35,15 @@ class UserInterface:
         self.mean_x = int(self.height*self.proporcao_tela/2)
 
         self.contornaImagem(self.indice_selecao)
+        self.engine = pyttsx3.init()
     
     def show(self):
         cv2.imshow("image", self.guiPainelContorno)
+    
+    def falar(self, texto):
+        self.engine.say(texto)
+        self.engine.setProperty('rate',200)
+        self.engine.runAndWait()
     
     def contornaImagem(self, indice):
         self.guiPainelContorno = np.copy(self.guiPainel)
@@ -70,15 +77,22 @@ class UserInterface:
         elif direcao == Direction.DIREITA:
             frame[self.mean_x-20:self.mean_x+20,int(self.width*self.proporcao_tela)-40:]=255
         elif direcao ==  Direction.ESQUERDA:
-            frame[self.mean_x-20:self.mean_x+20,:40]=255
+            frame[self.mean_x-20:self.mean_x+20,:40] = 255
         #elif direcao == EyeDirection.BAIXO:
-        cv2.imshow("image", frame)
+
+        winname = "image"
+        cv2.namedWindow(winname)
+        cv2.moveWindow(winname, 120,0)
+        cv2.imshow(winname, frame)
     
     def showTexto(self, texto):
         frame = np.zeros([int(self.height*self.proporcao_tela),int(self.width*self.proporcao_tela),3],dtype=np.uint8)
         cv2.putText(frame,texto,self.bottomLeftCornerOfText,self.font,self.fontScale,self.fontColor,self.lineType)
-        cv2.imshow("image", frame)
 
+        winname = "image"
+        cv2.namedWindow(winname)
+        cv2.moveWindow(winname, 120,0)
+        cv2.imshow(winname, frame)
 
             
 if __name__ == '__main__':
