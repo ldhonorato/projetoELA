@@ -19,7 +19,7 @@ class Calibrator:
         self.gui.falar("Ajuste iluminação e posicionamento do rosto")
         consecutiveImages = 0
         while consecutiveImages < 25:
-            coords, frame = eyeTrack.capturarCoordenadas(numFrames=1, debug=True)
+            coords, frame = self.eyeTracker.capturarCoordenadas(numFrames=1, debug=True)
             if coords:
                 consecutiveImages += 1
             else:
@@ -41,7 +41,7 @@ class Calibrator:
         while not coordenadasCentro:
             coordenadasCentro, _ = self.eyeTracker.capturarCoordenadas()
             # print(coordenadasCentro)
-            coordenadasCentro = self.eyeTracker.calculateDistances(coordenadasCentro)
+        coordenadasCentro = self.eyeTracker.calculateDistances(coordenadasCentro)
             # print(coordenadasCentro)
 
         #==================================================================
@@ -55,7 +55,7 @@ class Calibrator:
         coordenadasDireita = {}
         while not coordenadasDireita:
             coordenadasDireita, _ = self.eyeTracker.capturarCoordenadas()
-            coordenadasDireita = self.eyeTracker.calculateDistances(coordenadasDireita)
+        coordenadasDireita = self.eyeTracker.calculateDistances(coordenadasDireita)
             # print(coordenadasDireita)
         
         #==================================================================
@@ -68,7 +68,7 @@ class Calibrator:
         coordenadasEsquerda = {}
         while not coordenadasEsquerda:
             coordenadasEsquerda, _ = self.eyeTracker.capturarCoordenadas()
-            coordenadasEsquerda = self.eyeTracker.calculateDistances(coordenadasEsquerda)
+        coordenadasEsquerda = self.eyeTracker.calculateDistances(coordenadasEsquerda)
         # print(coordenadasDireita)
 
         # self.gui.showQuadradoCalibracao(Direction.BAIXO)
