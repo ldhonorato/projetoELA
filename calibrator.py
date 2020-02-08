@@ -41,7 +41,8 @@ class Calibrator:
         while not coordenadasCentro:
             coordenadasCentro, _ = self.eyeTracker.capturarCoordenadas()
             # print(coordenadasCentro)
-        coordenadasCentro = self.eyeTracker.calculateDistances(coordenadasCentro)
+        blinkRatio_open = coordenadasCentro['blink']
+        coordenadasCentro = self.eyeTracker.calculateDistancesLR(coordenadasCentro)
             # print(coordenadasCentro)
 
         #==================================================================
@@ -55,7 +56,7 @@ class Calibrator:
         coordenadasDireita = {}
         while not coordenadasDireita:
             coordenadasDireita, _ = self.eyeTracker.capturarCoordenadas()
-        coordenadasDireita = self.eyeTracker.calculateDistances(coordenadasDireita)
+        coordenadasDireita = self.eyeTracker.calculateDistancesLR(coordenadasDireita)
             # print(coordenadasDireita)
         
         #==================================================================
@@ -68,8 +69,36 @@ class Calibrator:
         coordenadasEsquerda = {}
         while not coordenadasEsquerda:
             coordenadasEsquerda, _ = self.eyeTracker.capturarCoordenadas()
-        coordenadasEsquerda = self.eyeTracker.calculateDistances(coordenadasEsquerda)
+        coordenadasEsquerda = self.eyeTracker.calculateDistancesLR(coordenadasEsquerda)
         # print(coordenadasDireita)
+
+        #==================================================================
+        #-----------------------COORDENADAS CIMA---------------------------
+        #==================================================================
+        self.gui.showQuadradoCalibracao(Direction.CIMA)
+        cv2.waitKey(50)
+        self.gui.falar("Olhe para cima")
+        
+        coordenadasCima = {}
+        while not coordenadasCima:
+            coordenadasCima, _ = self.eyeTracker.capturarCoordenadas()
+        coordenadasCima = self.eyeTracker.calculateDistancesUD(coordenadasCima)
+
+        #==================================================================
+        #-----------------------COORDENADAS BAIXO--------------------------
+        #==================================================================
+        self.gui.showQuadradoCalibracao(Direction.BAIXO)
+        cv2.waitKey(50)
+        self.gui.falar("Feche os olhos")
+        
+        coordenadasBaixo = {}
+        while not coordenadasBaixo:
+            coordenadasBaixo, _ = self.eyeTracker.capturarCoordenadas()
+        blinkRatio_close = coordenadasBaixo['blink']
+        coordenadasBaixo = self.eyeTracker.calculateDistancesUD(coordenadasBaixo)
+        
+        # print(coordenadasDireita)
+
 
         # self.gui.showQuadradoCalibracao(Direction.BAIXO)
         # time.sleep(1)
@@ -78,7 +107,12 @@ class Calibrator:
 
         calibracao = { "centro": coordenadasCentro,
                        "direita": coordenadasDireita,
-                       "esquerda": coordenadasEsquerda}
+                       "esquerda": coordenadasEsquerda,
+                       "cima": coordenadasCima,
+                       "baixo": coordenadasBaixo,
+                       "aberto": blinkRatio_open,
+                       "fechado": blinkRatio_close
+                       }
         print("Calibracao: ", calibracao)
         self.eyeTracker.updateCalibracao(calibracao)
 
@@ -92,11 +126,15 @@ if __name__ == '__main__':
 
         if coords:
             direcao = eyeTrack.getEyeDirection(coords)
-
+            print(direcao)
             if direcao == Direction.DIREITA:
                 gui.falar("Direita")
             elif direcao == Direction.ESQUERDA:
                 gui.falar("Esquerda")
+            elif direcao == Direction.CIMA:
+                gui.falar("Cima")
+            elif direcao == Direction.FECHADO:
+                gui.falar("Fechado")
         # print(coords)
         # if len(coords['center_l']) != 0:
         #     direcao = eyeTrack.getEyeDirection(coords)

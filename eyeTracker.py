@@ -5,6 +5,7 @@ import timeit
 import math
 from gui import UserInterface
 from direcao import Direction
+from math import hypot
 # from videocaptureasync import VideoCaptureAsync
 
 class EyeTrack:
@@ -34,6 +35,24 @@ class EyeTrack:
     def updateCalibracao(self, calibracao):
         self.calibracao = calibracao
 
+    def midpoint(self, p1 ,p2):
+        return int((p1.x + p2.x)/2), int((p1.y + p2.y)/2)
+
+    def get_blinking_ratio(self, eye_points, facial_landmarks):
+        left_point = (facial_landmarks.part(eye_points[0]).x, facial_landmarks.part(eye_points[0]).y)
+        right_point = (facial_landmarks.part(eye_points[3]).x, facial_landmarks.part(eye_points[3]).y)
+        center_top = self.midpoint(facial_landmarks.part(eye_points[1]), facial_landmarks.part(eye_points[2]))
+        center_bottom = self.midpoint(facial_landmarks.part(eye_points[5]), facial_landmarks.part(eye_points[4]))
+
+        # hor_line = cv2.line(frame, left_point, right_point, (0, 255, 0), 2)
+        # ver_line = cv2.line(frame, center_top, center_bottom, (0, 255, 0), 2)
+
+        hor_line_lenght = hypot((left_point[0] - right_point[0]), (left_point[1] - right_point[1]))
+        ver_line_lenght = hypot((center_top[0] - center_bottom[0]), (center_top[1] - center_bottom[1]))
+
+        ratio = hor_line_lenght / (ver_line_lenght + 0.000001)
+        return ratio
+
     def capturarCoordenadas(self, numFrames=10, delay_ms=100, debug=False):
         """
         Encontra as coordenadas do centro do olho esquerdo
@@ -52,6 +71,9 @@ class EyeTrack:
         lerc_coord = []
         relc_coord = []
         rerc_coord = []
+        ledn_coord = []
+        redn_coord = []
+        blink_ratio = []
         
         start = timeit.default_timer()
 
@@ -88,17 +110,28 @@ class EyeTrack:
                 for d in detections: #For each detected face
                     
                     shape = self.predictor(clahe_image, d) #Get coordinates
+                    left_eye_ratio = self.get_blinking_ratio([36, 37, 38, 39, 40, 41], shape)
+                    right_eye_ratio = self.get_blinking_ratio([42, 43, 44, 45, 46, 47], shape)
                     
+                    blink_ratio.append([left_eye_ratio, right_eye_ratio])
                     lelc_coord.append([shape.part(lelc).x+x, shape.part(lelc).y+y])
                     lerc_coord.append([shape.part(lerc).x+x, shape.part(lerc).y+y])
                     relc_coord.append([shape.part(relc).x+x, shape.part(relc).y+y])
                     rerc_coord.append([shape.part(rerc).x+x, shape.part(rerc).y+y])
+                    ledn_coord.append([shape.part(ledn).x+x, shape.part(ledn).y+y])
+                    redn_coord.append([shape.part(redn).x+x, shape.part(redn).y+y])
+
                     if debug:
                         # left eye corners
                         cv2.circle(newf, (shape.part(lelc).x, shape.part(lelc).y), 1, (0,0,255), thickness=1)
                         cv2.circle(newf, (shape.part(lerc).x, shape.part(lerc).y), 1, (0,0,255), thickness=1)
                         cv2.circle(newf, (shape.part(rerc).x, shape.part(rerc).y), 1, (255,0,255), thickness=1) #For each point, draw a red circle with thickness2 on the original frame
                         cv2.circle(newf, (shape.part(relc).x, shape.part(relc).y), 1, (0,255,0), thickness=1)
+                        # cv2.circle(newf, (shape.part(reup).x, shape.part(reup).y), 1, (100,255,0), thickness=1)
+                        cv2.circle(newf, (shape.part(redn).x, shape.part(redn).y), 1, (100,255,0), thickness=1)
+                        # cv2.circle(newf, (shape.part(leup).x, shape.part(leup).y), 1, (255,255,0), thickness=1)
+                        cv2.circle(newf, (shape.part(ledn).x, shape.part(ledn).y), 1, (255,255,0), thickness=1)
+
 
                     #-------- making left eye configuration --------------------------#
                     lefleftcorn_x_axis=shape.part(lelc).x+x # +x is done for absolute value on screen
@@ -170,6 +203,9 @@ class EyeTrack:
         lerc_coord = np.mean(lerc_coord,axis=0)
         relc_coord = np.mean(relc_coord,axis=0)
         rerc_coord = np.mean(rerc_coord,axis=0)
+        ledn_coord = np.mean(ledn_coord,axis=0)
+        redn_coord = np.mean(redn_coord,axis=0)
+        blink_ratio = np.mean(blink_ratio, axis=0)
 
         if not debug:
             frame = 0
@@ -180,15 +216,20 @@ class EyeTrack:
         coords['lerc'] = lerc_coord
         coords['relc'] = relc_coord
         coords['rerc'] = rerc_coord
-
-        # for k in coords:
-        #     if math.isnan(coords[k]):
-        #         coords[k] = 0
+        coords['ledn'] = ledn_coord
+        coords['redn'] = redn_coord
+        coords['blink'] = blink_ratio
+        
+        # coord_ret = coords
+        for k in coords:
+            if (not isinstance(coords[k], np.ndarray)) or (len(coords[k]) != 2):
+                coords = {} #nao sei pq mas algumas vezes náo pega as duas coordenadas
+                break
 
         return coords, frame
         # return coords, cv2.flip(frame,1)
 
-    def calculateDistances(self, coords):
+    def calculateDistancesLR(self, coords):
         lelc_coord = np.array(coords['lelc'])
         lerc_coord = np.array(coords['lerc'])
         center_l = np.array(coords['center_l'])
@@ -206,8 +247,20 @@ class EyeTrack:
         dist_l = dist_le_rc - dist_le_lc
 
         return dist_r, dist_l
+
+    def calculateDistancesUD(self, coords):
+        center_l = np.array(coords['center_l'])
+        center_r = np.array(coords['center_r'])
+
+        ledn_coord = np.array(coords['ledn'])
+        redn_coord = np.array(coords['redn'])
+        
+        dist_l_dn = ledn_coord[1] - center_l[1] 
+        dist_r_dn = redn_coord[1] - center_r[1]
+        
+        return dist_l_dn, dist_r_dn
     
-    def calculateEyeDirection(self, currentDistance, eye=0):
+    def calculateEyeDirectionLR(self, currentDistance, eye=0):
         ############ Calibracoes ############
         if not self.calibracao:
             return -1 #empty calibration
@@ -243,19 +296,69 @@ class EyeTrack:
         # print("Direcao = ", direcaoOlho)
 
         return direcaoOlho
+    
+    def calculateEyeDirectionUD(self, currentDistance, eye=0):
+        ############ Calibracoes ############
+        if not self.calibracao:
+            return -1 #empty calibration
 
+        coordenadasCima = self.calibracao["cima"]
+        coordenadasBaixo = self.calibracao["baixo"]
+        
+        cal_cima_eye = coordenadasCima[eye]
+        cal_baixo_eye = coordenadasBaixo[eye]
+        
+        cal_size = cal_baixo_eye - cal_cima_eye
+        limite_cima = cal_cima_eye + 0.2*cal_size
+        limite_baixo = cal_cima_eye + 0.8*cal_size
+
+        direcaoOlho = -1
+        if currentDistance < limite_baixo:
+            direcaoOlho = Direction.BAIXO
+        elif currentDistance > limite_cima:
+            direcaoOlho = Direction.CIMA
+        else:
+            direcaoOlho = Direction.CENTRO
+        
+        # print("==========================================================")
+        # print("Eye = ", eye)
+        # print("Calibracao = %f | %f | %f" % (cal_centro_eye, cal_esquerda_eye, cal_direita_eye))
+        # print("limites = %f | %f " % (limite_direita, limite_esquerda))
+        # print("distanciaAtual = ", currentDistance)
+        # print("Direcao = ", direcaoOlho)
+
+        return direcaoOlho
+
+    def olhoFechado(self, coords):
+        limitesFechado = np.array(self.calibracao['fechado'])
+        aberturaOlho = np.array(coords['blink'])
+        
+        aberturaOlho = aberturaOlho > (0.8*limitesFechado)
+
+        return np.all(aberturaOlho)
+
+        
 
     def getEyeDirection(self, coords):
         
-        dist_r, dist_l = self.calculateDistances(coords)
+        if self.olhoFechado(coords):
+            return Direction.FECHADO
+            
+        dist_r, dist_l = self.calculateDistancesLR(coords)
 
-        direcaoOlhoDireito = self.calculateEyeDirection(dist_r, 0)
-        direcaoOlhoEsquerdo = self.calculateEyeDirection(dist_l, 1)
-        
+        direcaoOlhoDireito = self.calculateEyeDirectionLR(dist_r, 0)
+        direcaoOlhoEsquerdo = self.calculateEyeDirectionLR(dist_l, 1)
+
         if direcaoOlhoDireito == direcaoOlhoEsquerdo:
-            return direcaoOlhoDireito
+            if direcaoOlhoDireito == Direction.ESQUERDA or direcaoOlhoDireito == Direction.DIREITA:
+                return direcaoOlhoDireito
+            
+            dist_l_dn, _ = self.calculateDistancesUD(coords)
+            direcaoUDolhoDireito = self.calculateEyeDirectionUD(dist_l_dn, eye=1)
+
+            return direcaoUDolhoDireito
         else:
-            return -1
+            return Direction.NENHUMA
 
     def run(self):
         pass
@@ -264,9 +367,19 @@ if __name__ == '__main__':
     eyeTrack = EyeTrack(None)
     while True:
         coords, frame = eyeTrack.capturarCoordenadas(numFrames=1, debug=True)
+
+        if coords:
+            #print(coords)
+            dist_l_dn, dist_r_dn = eyeTrack.calculateDistancesUD(coords)
+            print(dist_r_dn)
+            print(eyeTrack.getEyeDirection(coords))
+            # print(coords)
+            # y_le = coords['center_l'][1] - (coords['lelc'][1]+coords['lerc'][1])/2
+            # y_re = coords['center_r'][1] - (coords['relc'][1]+coords['rerc'][1])/2
+            # print(y_le, y_re)
         # print(coords)
         # if coords:
         #      direcao = eyeTrack.getEyeDirection(coords)
         cv2.imshow("image", frame) #Display the frame for debug
-        if cv2.waitKey(100) & 0xFF == ord('q'): #Exit program when the user presses 'q'
+        if cv2.waitKey(10) & 0xFF == ord('q'): #Exit program when the user presses 'q'
             break

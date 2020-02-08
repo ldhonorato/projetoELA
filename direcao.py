@@ -5,4 +5,6 @@ class Direction(Enum):
     ESQUERDA = 2
     DIREITA = 3
     BAIXO = 4
+    CIMA = 5
+    FECHADO = 6
     NENHUMA = -1
