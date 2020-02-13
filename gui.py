@@ -3,20 +3,76 @@ import numpy as np
 from direcao import Direction
 from win32api import GetSystemMetrics
 import pyttsx3
+from PIL import Image, ImageDraw, ImageFont
 
 class UserInterface:
     def __init__(self, trackbarSize=3):
-        agua = cv2.resize(cv2.imread('imgs/agua.jpg'), (256, 256))
-        comida = cv2.resize(cv2.imread('imgs/comida.jpg'), (256, 256))
-        saliva = cv2.resize(cv2.imread('imgs/limpar_saliva.jpg'), (256, 256))
-        pescoco = cv2.resize(cv2.imread('imgs/pescoco.jpg'), (256, 256))
-        youtube = cv2.resize(cv2.imread('imgs/youtube.jpg'), (256, 256))
+        self.font                   = cv2.FONT_HERSHEY_SIMPLEX
+        self.bottomLeftCornerOfText = (100,500)
+        self.fontScale              = 1
+        self.fontColor              = (255,255,255)
+        self.lineType               = 2
 
-        coceira = cv2.resize(cv2.imread('imgs/coceira.jpg'), (256, 256))
-        dor = cv2.resize(cv2.imread('imgs/dor.jpg'), (256, 256))
-        mudar_posicao = cv2.resize(cv2.imread('imgs/mudar_posicao.jpg'), (256, 256))
-        falta_ar = cv2.resize(cv2.imread('imgs/falta_de_ar.jpg'), (256, 256))
-        bpap = cv2.resize(cv2.imread('imgs/bpap.jpg'), (256, 256))
+        #imagem de água
+        agua = cv2.resize(cv2.imread('imgs/agua.jpg'), (256, 226))
+        frameTexto = np.zeros([30,256,3],dtype=np.uint8)
+        cv2.putText(frameTexto,"Estou com sede",(10,20),self.font,0.8,self.fontColor,self.lineType)
+        agua = np.concatenate((agua, frameTexto), axis=0)
+
+        #imagem de comida
+        comida = cv2.resize(cv2.imread('imgs/comida.jpg'), (256, 226))
+        frameTextoComida = np.zeros([30,256,3],dtype=np.uint8)
+        cv2.putText(frameTextoComida,"Estou com fome",(10,20),self.font,0.8,self.fontColor,self.lineType)
+        comida = np.concatenate((comida, frameTextoComida), axis=0)
+
+        #imagem de saliva
+        saliva = cv2.resize(cv2.imread('imgs/limpar_saliva.jpg'), (256, 226))
+        frameTextoSaliva = np.zeros([30,256,3],dtype=np.uint8)
+        cv2.putText(frameTextoSaliva,"Limpar saliva",(10,20),self.font,0.8,self.fontColor,self.lineType)
+        saliva = np.concatenate((saliva, frameTextoSaliva), axis=0)
+
+        #imagem de pescoco
+        pescoco = cv2.resize(cv2.imread('imgs/pescoco.jpg'), (256, 226))
+        frameTextoPescoco = np.zeros([30,256,3],dtype=np.uint8)
+        cv2.putText(frameTextoPescoco,"Dor no pescoco",(10,20),self.font,0.8,self.fontColor,self.lineType)
+        pescoco = np.concatenate((pescoco, frameTextoPescoco), axis=0)
+
+        #imagem de tv
+        youtube = cv2.resize(cv2.imread('imgs/youtube.jpg'), (256, 226))
+        frameTextoYoutube = np.zeros([30,256,3],dtype=np.uint8)
+        cv2.putText(frameTextoYoutube,"Ver Tv",(10,20),self.font,0.8,self.fontColor,self.lineType)
+        youtube = np.concatenate((youtube, frameTextoYoutube), axis=0)
+
+        #imagem de coceira
+        coceira = cv2.resize(cv2.imread('imgs/coceira.jpg'), (256, 226))
+        frameTextoCoceira = np.zeros([30,256,3],dtype=np.uint8)
+        cv2.putText(frameTextoCoceira,"Estou com coceira",(10,20),self.font,0.8,self.fontColor,self.lineType)
+        coceira = np.concatenate((coceira, frameTextoCoceira), axis=0)
+
+        #imagem dor geral
+        dor = cv2.resize(cv2.imread('imgs/dor.jpg'), (256, 226))
+        frameTextoDor = np.zeros([30,256,3],dtype=np.uint8)
+        cv2.putText(frameTextoDor,"Estou com dor",(10,20),self.font,0.8,self.fontColor,self.lineType)
+        dor = np.concatenate((dor, frameTextoDor), axis=0)
+
+        #imagem de mudar de posiçao
+        mudar_posicao = cv2.resize(cv2.imread('imgs/mudar_posicao.jpg'), (256, 226))
+        frameTextoPosicao = np.zeros([30,256,3],dtype=np.uint8)
+        cv2.putText(frameTextoPosicao,"Mudar de posicao",(10,20),self.font,0.8,self.fontColor,self.lineType)
+        mudar_posicao = np.concatenate((mudar_posicao, frameTextoPosicao), axis=0)
+
+        #imagem de falta de ar
+        falta_ar = cv2.resize(cv2.imread('imgs/falta_de_ar.jpg'), (256, 226))
+        frameTextoFaltaDeAr = np.zeros([30,256,3],dtype=np.uint8)
+        cv2.putText(frameTextoFaltaDeAr,"Falta de ar",(10,20),self.font,0.8,self.fontColor,self.lineType)
+        falta_ar = np.concatenate((falta_ar, frameTextoFaltaDeAr), axis=0)
+
+        #imagem de bpap
+        bpap = cv2.resize(cv2.imread('imgs/bpap.jpg'), (256, 226))
+        frameTextoBPAP = np.zeros([30,256,3],dtype=np.uint8)
+        cv2.putText(frameTextoBPAP,"bpap",(10,20),self.font,0.8,self.fontColor,self.lineType)
+        bpap = np.concatenate((bpap, frameTextoBPAP), axis=0)
+
         image_linha1 = np.concatenate((agua, comida, saliva, pescoco, youtube), axis=1)
         image_linha2 = np.concatenate((coceira, dor, mudar_posicao, falta_ar, bpap), axis=1)
 
@@ -65,10 +121,11 @@ class UserInterface:
         fimX = (int(indice/5)+1)*255
         iniY = int(indice%5)*255
         fimY = (int(indice%5)+1)*255
-        self.guiPainelContorno[iniX:iniX+10,iniY:fimY,:]=0
-        self.guiPainelContorno[fimX-10:fimX,iniY:fimY,:]=0
-        self.guiPainelContorno[iniX:fimX,iniY:iniY+10,:]=0
-        self.guiPainelContorno[iniX:fimX,fimY-10:fimY,:]=0
+        cor = [0, 0, 255] #BGR
+        self.guiPainelContorno[iniX:iniX+10,iniY:fimY]=cor
+        self.guiPainelContorno[fimX-10:fimX,iniY:fimY]=cor
+        self.guiPainelContorno[iniX:fimX,iniY:iniY+10]=cor
+        self.guiPainelContorno[iniX:fimX,fimY-10:fimY]=cor
         #return self.guiPainelContorno
     
     def moverSelecao(self, eyeDirection):
@@ -86,15 +143,16 @@ class UserInterface:
         self.show()
     
     def showQuadradoCalibracao(self, direcao):
-        frame = np.zeros([int(self.height*self.proporcao_tela),int(self.width*self.proporcao_tela),3],dtype=np.uint8)
-        #frame.fill(0)
+        frame = np.zeros([int(self.height*self.proporcao_tela),int(self.width*self.proporcao_tela),3],dtype=np.uint8)           
+        
         if direcao == Direction.CENTRO:
-            frame[self.mean_x-20:self.mean_x+20,self.mean_y-20:self.mean_y+20]=255
+            frame = cv2.imread('imgs/alvo.png')
         elif direcao == Direction.DIREITA:
-            frame[self.mean_x-20:self.mean_x+20,int(self.width*self.proporcao_tela)-40:]=255
+            frame = cv2.imread('imgs/telaSetaDireita.png')
         elif direcao ==  Direction.ESQUERDA:
-            frame[self.mean_x-20:self.mean_x+20,:40] = 255
-        #elif direcao == EyeDirection.BAIXO:
+            frame = cv2.imread('imgs/telaSetaEsquerda.png')
+        elif direcao == Direction.CIMA:
+            frame = cv2.imread('imgs/telaSetaCima.png')
 
         winname = "image"
         cv2.namedWindow(winname)
@@ -116,7 +174,7 @@ if __name__ == '__main__':
     while True:
         gui.show()
         # gui.showQuadradoCalibracao(Direction.DIREITA)
-
+       
         if cv2.waitKey(50)  & 0xFF == ord('q'): #Exit program when the user presses 'q'
             break
 
