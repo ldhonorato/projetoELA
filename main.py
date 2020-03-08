@@ -24,7 +24,7 @@ if __name__ == '__main__':
     contadorDirecao = 0
     contadorOlhosFechados = 0
     while True:
-        coords, _ = eyeTrack.capturarCoordenadas(numFrames=1, debug=False)
+        coords, _ = eyeTrack.capturarCoordenadasMedia(numFrames=1, debug=False)
         # print(coords)
         if coords:
              direcao = eyeTrack.getEyeDirection(coords)
@@ -62,8 +62,7 @@ if __name__ == '__main__':
                     gui.falar("Esquerda")
                 elif direcao == Direction.CIMA:
                     gui.falarSelecao()
-            
-
+        
         if cv2.waitKey(5)  & 0xFF == ord('q'): #Exit program when the user presses 'q'
             break
 

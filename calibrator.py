@@ -19,7 +19,7 @@ class Calibrator:
         self.gui.falar("Ajuste iluminação e posicionamento do rosto")
         consecutiveImages = 0
         while consecutiveImages < 25:
-            coords, frame = self.eyeTracker.capturarCoordenadas(numFrames=1, debug=True)
+            coords, frame = self.eyeTracker.capturarCoordenadasMedia(numFrames=1, debug=True)
             if coords:
                 consecutiveImages += 1
             else:
@@ -39,7 +39,7 @@ class Calibrator:
         
         coordenadasCentro = {}
         while not coordenadasCentro:
-            coordenadasCentro, _ = self.eyeTracker.capturarCoordenadas()
+            coordenadasCentro, _ = self.eyeTracker.capturarCoordenadasMedia()
             # print(coordenadasCentro)
         blinkRatio_open = coordenadasCentro['blink']
         coordenadasCentro = self.eyeTracker.calculateDistancesLR(coordenadasCentro)
@@ -55,7 +55,7 @@ class Calibrator:
 
         coordenadasDireita = {}
         while not coordenadasDireita:
-            coordenadasDireita, _ = self.eyeTracker.capturarCoordenadas()
+            coordenadasDireita, _ = self.eyeTracker.capturarCoordenadasMedia()
         coordenadasDireita = self.eyeTracker.calculateDistancesLR(coordenadasDireita)
             # print(coordenadasDireita)
         
@@ -68,7 +68,7 @@ class Calibrator:
         
         coordenadasEsquerda = {}
         while not coordenadasEsquerda:
-            coordenadasEsquerda, _ = self.eyeTracker.capturarCoordenadas()
+            coordenadasEsquerda, _ = self.eyeTracker.capturarCoordenadasMedia()
         coordenadasEsquerda = self.eyeTracker.calculateDistancesLR(coordenadasEsquerda)
         # print(coordenadasDireita)
 
@@ -81,7 +81,7 @@ class Calibrator:
         
         coordenadasCima = {}
         while not coordenadasCima:
-            coordenadasCima, _ = self.eyeTracker.capturarCoordenadas()
+            coordenadasCima, _ = self.eyeTracker.capturarCoordenadasMedia()
         coordenadasCima = self.eyeTracker.calculateDistancesUD(coordenadasCima)
 
         #==================================================================
@@ -93,7 +93,7 @@ class Calibrator:
         
         coordenadasBaixo = {}
         while not coordenadasBaixo:
-            coordenadasBaixo, _ = self.eyeTracker.capturarCoordenadas()
+            coordenadasBaixo, _ = self.eyeTracker.capturarCoordenadasMedia()
         blinkRatio_close = coordenadasBaixo['blink']
         coordenadasBaixo = self.eyeTracker.calculateDistancesUD(coordenadasBaixo)
         
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     calibrator = Calibrator(gui, eyeTrack)
     calibrator.calibrar()
     while True:
-        coords, frame = eyeTrack.capturarCoordenadas(numFrames=2, debug=True)
+        coords, frame = eyeTrack.capturarCoordenadasMedia(numFrames=2, debug=True)
 
         if coords:
             direcao = eyeTrack.getEyeDirection(coords)
