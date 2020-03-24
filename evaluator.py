@@ -113,7 +113,7 @@ def run(pessoa_id):
     video = cv2.VideoCapture(pathCalibracao + "Teste" + str(pessoa_id) + ".mp4")
 
     fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-    writer = cv2.VideoWriter("output" + str(pessoa_id) + ".avi", fourcc, 30, (1280, 720), True)
+    writer = cv2.VideoWriter("output" + str(pessoa_id) + ".avi", fourcc, 30, (640, 480), True)
     f_csv = open("output" + str(pessoa_id) + ".csv", 'w')
     f_csv.write('Frame;Class\n')
     frameNumber = 1
@@ -127,7 +127,7 @@ def run(pessoa_id):
             direcao = eyeTrack.getEyeDirection(coords)
             direcaoStr = dirEnum2Str(direcao)
 
-            cv2.putText(frame, direcaoStr, (35, 50), cv2.FONT_HERSHEY_SIMPLEX,
+            cv2.putText(frame, str(frameNumber) + " " + direcaoStr, (35, 50), cv2.FONT_HERSHEY_SIMPLEX,
 		                1.25, (0, 255, 0), 5)
             
             writer.write(frame)
@@ -145,7 +145,7 @@ def run(pessoa_id):
             
 
 if __name__ == '__main__':
-    for pessoa_id in range(1, 11):
+    for pessoa_id in range(7, 11):
         print(pessoa_id)
         run(pessoa_id)
 
