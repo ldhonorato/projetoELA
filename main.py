@@ -3,6 +3,7 @@ import numpy as np
 from eyeTracker import EyeTrack
 from gui import UserInterface
 from direcao import Direction
+from videocaptureasync import VideoCaptureAsync 
 
 if __name__ == '__main__':
     int2Text = ['zero', 'um', 'dois', 'tres', 'quatro', 'cinco']
@@ -12,11 +13,12 @@ if __name__ == '__main__':
     contadorOlhosFechados = 0
 
     gui.show()
-    video = cv2.VideoCapture(0) # Start capturing the WebCam
-
+    video = VideoCaptureAsync(0) #ou um número inteiro identificado a câmera, tal qual no cv2
+    video.start()
+    
+    frameNumber = 1
     while True:
-        
-        grabed, frame = video.read()
+        (grabed, frame) = video.read() 
         if not grabed:
             break
         

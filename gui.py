@@ -3,7 +3,6 @@ import numpy as np
 import pyttsx3
 import win32api
 from direcao import Direction
-#from win32api import GetSystemMetrics 
 from PIL import Image, ImageDraw, ImageFont
 
 class UserInterface:
@@ -61,7 +60,6 @@ class UserInterface:
 
     def show(self):
         cv2.imshow("image", self.guiPainelContorno)
-        # cv2.createTrackbar('Ativando','image',0,self.trackbarSize,self.nothing)
     
     def updateTrackbar(self, value):
         cv2.setTrackbarPos('Ativando','image',value)

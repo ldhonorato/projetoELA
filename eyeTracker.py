@@ -3,13 +3,11 @@ import numpy as np
 import dlib
 from gui import UserInterface
 from direcao import Direction
-from imutils import face_utils
 from scipy.spatial import distance as dist
 
 class EyeTrack:
         
     def __init__(self, gui : UserInterface):
-        self.face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_alt.xml')#CascadeClassifier:é usado para carregar um arquivo classificador .xml. Pode ser um classificador Haar ou LBP
         self.detector = dlib.get_frontal_face_detector() #Face detector
         self.predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat") #Landmark identifier. Set the filename to whatever you named the downloaded file
         self.gui = gui
@@ -59,30 +57,36 @@ class EyeTrack:
         
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)#a imagem é passada para a escala de cinza 
 
-        # detectMultiScale:é usado para executar a detecção, nesse caso, da face -> parametros: (image, scaleFactor=1.1, minNeighbors=3)
-        faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)# retorna um array de array das coord encontradas em cada face
+        faces = self.detector(gray, 1) #Detect the faces in the image
         
-        if len(faces) != 1:
-            return coords, frame
-        
-        for (x,y,w,h) in faces:
-            # desenhando um retangulo na imagem -> cv2.rectangle(image, start_point, end_point, color, thickness): image
-            cv2.rectangle(frame,(x,y),(x+w,y+h),(255,0,0),1)
+        for f in faces:
             
-            # A partir daqui a imagem é recortada no tamanho do retangulo 
-            gray = gray[y:y+h,x:x+w]
-            newf = frame[y:y+h,x:x+w]
+            print("Number of faces detected: {}".format(len(faces))) 
+            if len(faces) != 1:
+                return coords, frame
+                
+            print("Detection: Left: {} Top: {} Right: {} Bottom: {}".format(f.left(), f.top(), f.right(), f.bottom()))
+                
+            x = f.left()
+            y = f.top() 
+            w = f.right() 
+            h = f.bottom() 
+            
+            #A partir daqui a imagem é recortada no tamanho do retangulo 
+            cv2.rectangle(frame, (x, y), (w, h), 255, 2)
+            gray = gray[y:h,x:w]
+            newf = frame[y:h,x:w]            
             
             # aplicando o clahe na imagem -> Equalização do histograma adaptativo com contraste limitado 
             # CLAHE(Contrast Limited Adaptive Histogram Equalization)
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))#COLOCAR NAS PROPRIEDADES
             clahe_image = clahe.apply(gray)
     
             # detectando a face com o contraste melhorado -> usa a Dlib
             detections = self.detector(clahe_image, 1) #Detect the faces in the image
             
             for d in detections: #For each detected face
-                
+                                
                 # localizando os landmarks
                 shape = self.predictor(clahe_image, d) #Get coordinates
 
@@ -184,24 +188,36 @@ class EyeTrack:
                 # centróide etc. 
                 
         #---------------------calculando o centro do olho direito ------------------------------------------#
-                if len(contours)==2 or len(contours)==1:
-                    M = cv2.moments(contours[0])
+                if len(contours)>0:
+                    #Find the index of the largest contour
+                    areas = [cv2.contourArea(c) for c in contours]
+                    max_index = np.argmax(areas)
+                    
+                    M = cv2.moments(contours[max_index])
                     
                     if M['m00'] != 0: #Se M ["m00"] for diferente de zero, ou seja, quando a segmentação ocorreu perfeitamente.
                         cx = int(M['m10']/M['m00'])
                         cy = int(M['m01']/M['m00'])
                         if debug:
-                            cv2.line(roi,(cx,cy),(cx,cy),(0,0,255),3)
+                            #cv2.line(roi,(cx,cy),(cx,cy),(0,0,255),3)
+                            cv2.line(roi, (cx - 3,cy), (cx + 3, cy), (0,0,255))
+                            cv2.line(roi, (cx,cy - 3), (cx, cy + 3), (0,0,255))
                             
         #---------------------calculando o centro do olho esquerdo ------------------------------------------#
-                if len(lcontours)==2 or len(lcontours)==1:
-                    M = cv2.moments(lcontours[0])
+                if len(lcontours)>0:
+                    #Find the index of the largest contour
+                    areas = [cv2.contourArea(c) for c in lcontours]
+                    max_index = np.argmax(areas)
+                    
+                    M = cv2.moments(lcontours[max_index])
                     
                     if M['m00'] != 0: #Se M ["m00"] for diferente de zero, ou seja, quando a segmentação ocorreu perfeitamente.
                         lcx = int(M['m10']/M['m00'])
                         lcy = int(M['m01']/M['m00'])
                         if debug:
-                            cv2.line(lefteye,(lcx,lcy),(lcx,lcy),(0,0,255),3)
+                            #cv2.line(lefteye,(lcx,lcy),(lcx,lcy),(0,0,255),3)
+                            cv2.line(lefteye, (lcx - 3, lcy), (lcx + 3, lcy), (0,0,255))
+                            cv2.line(lefteye, (lcx, lcy - 3), (lcx, lcy + 3), (0,0,255))
 
                 center_l = [lcx + left_x_coord,lcy + left_y_coord]
                 center_r = [cx + right_x_coord,cy + right_y_coord]
@@ -225,7 +241,7 @@ class EyeTrack:
             return coords, frame
 
     def distancia_maior_porc(self, dist_1, dist_2, porcento):
-    #indica se a dist_1 é tantos porcentos maior que a dist_2 -> return true or false 
+        #indica se a dist_1 é tantos porcentos maior que a dist_2 -> return true or false 
         x = (dist_1*100)/dist_2
         return (x-100) >= porcento
         
@@ -250,25 +266,22 @@ class EyeTrack:
         
         dist_re_rc = ((center_r[0]-rerc_coord[0])**2 + (center_r[1]-rerc_coord[1])**2)**0.5
         dist_re_lc = ((center_r[0]-relc_coord[0])**2 + (center_r[1]-relc_coord[1])**2)**0.5
-        
         dist_re_dn = center_r[1] - redn_coord[1]
         dist_re_up = reup_coord[1] - center_r[1]
         
+        
         dist_le_rc = ((center_l[0]-lerc_coord[0])**2 + (center_r[1]-lerc_coord[1])**2)**0.5
         dist_le_lc = ((center_l[0]-lelc_coord[0])**2 + (center_r[1]-lelc_coord[1])**2)**0.5
-        
         dist_le_dn = center_l[1] - ledn_coord[1]
         dist_le_up = leup_coord[1] - center_l[1] 
 
+
         direcaoOlho = -1
-        if self.distancia_maior_porc(dist_re_lc, dist_re_rc, 80) and self.distancia_maior_porc(dist_le_lc, dist_le_rc, 80):
-            print("entrou direita")
+        if self.distancia_maior_porc(dist_re_lc, dist_re_rc, 50) and self.distancia_maior_porc(dist_le_lc, dist_le_rc, 50):
             direcaoOlho = Direction.DIREITA
-        elif self.distancia_maior_porc(dist_re_rc, dist_re_lc, 80) and self.distancia_maior_porc(dist_le_rc, dist_le_lc, 80):
-            print("entrou esquerda")
-            direcaoOlho = Direction.ESQUERDA
-        elif self.distancia_maior_porc(dist_re_dn, dist_re_up, 70) and self.distancia_maior_porc(dist_le_dn, dist_le_up, 70):
-            print('entrou cima')
+        elif self.distancia_maior_porc(dist_re_rc, dist_re_lc, 50) and self.distancia_maior_porc(dist_le_rc, dist_le_lc, 50):
+            direcaoOlho = Direction.ESQUERDA 
+        elif self.distancia_maior_porc(dist_re_dn, dist_re_up, 50) and self.distancia_maior_porc(dist_le_dn, dist_le_up, 50):
             direcaoOlho = Direction.CIMA
         else:
             direcaoOlho = Direction.CENTRO
@@ -288,47 +301,3 @@ class EyeTrack:
     def run(self):
         pass
     
-
-def dirEnum2Str(direcao):
-    dirstr = ""
-    if direcao == Direction.DIREITA:
-        dirstr = "Direita"
-    elif direcao == Direction.ESQUERDA:
-        dirstr = "Esquerda"
-    elif direcao == Direction.FECHADO:
-        dirstr = "Fechado"
-    elif direcao == Direction.CIMA:
-        dirstr = "Cima"
-    elif direcao == Direction.CENTRO:
-        dirstr = "Centro"
-    elif direcao == Direction.NENHUMA:
-        dirstr = "Nenhuma"
-    
-    return dirstr 
-    
-if __name__ == '__main__':
-
-    eyeTrack = EyeTrack(None)
-    video = cv2.VideoCapture(0) # Start capturing the WebCam
-    
-    while True:
-        (grabed, frame) = video.read()
-        
-        if not grabed:
-            break
-
-        coords, frame = eyeTrack.getCoordenada(frame, debug=True)
-        
-        if coords:
-            direcao = eyeTrack.getEyeDirection(coords)
-            direcaoStr = dirEnum2Str(direcao)
-            
-            if(direcaoStr != "Centro"): 
-                print(direcaoStr)
-
-            cv2.putText(frame, direcaoStr, (35, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.25, (100, 0, 70), 5)
-            cv2.imshow("Output", frame)
-            
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord("q"):
-                break
