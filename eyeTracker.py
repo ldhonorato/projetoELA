@@ -61,11 +61,11 @@ class EyeTrack:
         
         for f in faces:
             
-            print("Number of faces detected: {}".format(len(faces))) 
+            #print("Number of faces detected: {}".format(len(faces))) 
             if len(faces) != 1:
                 return coords, frame
                 
-            print("Detection: Left: {} Top: {} Right: {} Bottom: {}".format(f.left(), f.top(), f.right(), f.bottom()))
+            #print("Detection: Left: {} Top: {} Right: {} Bottom: {}".format(f.left(), f.top(), f.right(), f.bottom()))
                 
             x = f.left()
             y = f.top() 

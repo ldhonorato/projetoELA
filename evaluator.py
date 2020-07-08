@@ -68,58 +68,76 @@ def rotacao(frame, graus):
     rotacao = cv2.getRotationMatrix2D(ponto, graus, 1.0)
     rotacionado = cv2.warpAffine(frame, rotacao, (largura, altura))
     return rotacionado
+
+def aplicarTransformacao(frame, tipoTransformacao):
+    new_frame = frame
+
+    if tipoTransformacao == "noise1":
+        new_frame = noise_gauss(frame,0.01)
+    elif tipoTransformacao == "noise2":
+        new_frame = noise_gauss(frame,0.02)
     
-def run(pessoa_id):
+    
+    return new_frame
+
+def run(pessoa_id, transformacoes):
+    
     ACTION_THRESHOLD = 2
     
     gui = UserInterface(ACTION_THRESHOLD+1)
     eyeTrack = EyeTrack(gui)
     
-    pathCalibracao = "Base\\Videos\\"
-    video = cv2.VideoCapture(pathCalibracao + "Teste" + str(pessoa_id) + ".mp4")
+    pathVideos = "Base\\Videos\\"
 
-    writer_vid = cv2.VideoWriter("output" + str(pessoa_id) + ".avi", cv2.VideoWriter_fourcc(*"MJPG"),10, (640, 480), True)
-    
-    f_csv_tabela = open("output" + str(pessoa_id) + ".csv", 'w')
-    f_csv_tabela.write('Vídeo;Frame;Class\n')
-    
-    frameNumber = 1
-    while True:
-        print("frame: "+ str(frameNumber))
-        
-        (grabed, frame) = video.read()
-        if not grabed:
-            break  
-        
-        noise = noise_gauss(frame,0.01)
-        coords, frame = eyeTrack.getCoordenada(noise, debug=True)
-        
-        if coords:
-            direcao = eyeTrack.getEyeDirection(coords)
-            direcaoStr = dirEnum2Str(direcao)
+    for transformacao in transformacoes:
+        video = cv2.VideoCapture(pathVideos + "Teste" + str(pessoa_id) + ".mp4")
 
-            cv2.putText(frame, str(frameNumber) + " " + direcaoStr, (35, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.25, 
-                        (100, 50, 100), 5)
-            
-            writer_vid.write(frame)
-            f_csv_tabela.write(str(pessoa_id) + ';' + str(frameNumber) + ';' + direcaoStr + '\n') 
-            
-            cv2.imshow("Output", frame)
-            
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord("q"):
-                break
+        video_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+        video_height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        writer_vid = cv2.VideoWriter("output" + str(pessoa_id) + "_" + transformacao +".avi", cv2.VideoWriter_fourcc(*"MJPG"),10, (video_width, video_height), True)
         
-            frameNumber += 1
-    
-    writer_vid.release()
-    video.release()
-    f_csv_tabela.close()
+        f_csv_tabela = open("output" + str(pessoa_id) + "_" + transformacao + ".csv", 'w')
+        f_csv_tabela.write('Video;Frame;Class\n')
+        
+        frameNumber = 1
+        while True:
+            print("frame: "+ str(frameNumber))
+            
+            (grabed, frame) = video.read()
+            if not grabed:
+                break  
+            
+            new_frame = aplicarTransformacao(frame,transformacao)
+            coords, frame = eyeTrack.getCoordenada(new_frame, debug=True)
+            
+            if coords:
+                direcao = eyeTrack.getEyeDirection(coords)
+                direcaoStr = dirEnum2Str(direcao)
+
+                cv2.putText(frame, str(frameNumber) + " " + direcaoStr, (35, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.25, 
+                            (100, 50, 100), 5)
+                
+                writer_vid.write(frame)
+                f_csv_tabela.write(str(pessoa_id) + ';' + str(frameNumber) + ';' + direcaoStr + '\n')
+                
+                #cv2.imshow("Output", frame)
+                
+                # key = cv2.waitKey(1) & 0xFF
+                # if key == ord("q"):
+                #     break
+            
+                frameNumber += 1
+        
+        writer_vid.release()
+        video.release()
+        f_csv_tabela.close()
             
 if __name__ == '__main__':
-    for pessoa_id in range(11,12):
+    transformacoes = ["noise1", "noise2", "normal"]
+    for pessoa_id in range(1,10):
         print(pessoa_id)
-        run(pessoa_id)
+        run(pessoa_id, transformacoes)
 
 
     
