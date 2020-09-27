@@ -1,56 +1,59 @@
-import cv2
-import numpy as np
 from eyeTracker import EyeTrack
-from gui import UserInterface
 from direcao import Direction
 from videocaptureasync import VideoCaptureAsync 
+import pyautogui
+import pyttsx3
+from gui import Interface
 
-if __name__ == '__main__':
-    int2Text = ['zero', 'um', 'dois', 'tres', 'quatro', 'cinco']
-    ACTION_THRESHOLD = 2
-    gui = UserInterface(ACTION_THRESHOLD+1)
-    eyeTrack = EyeTrack(gui)
-    contadorOlhosFechados = 0
-
-    gui.show()
-    video = VideoCaptureAsync(0) #ou um número inteiro identificado a câmera, tal qual no cv2
-    video.start()
+if __name__ == '__main__':   
     
-    frameNumber = 1
+    eyeTrack = EyeTrack()
+    int2Text = ['zero', 'um', 'dois', 'tres', 'quatro', 'cinco']
+    contadorOlhosFechados = 0
+    
+    gui = Interface()
+    gui.speech_assistant('Olá estou aqui para ajudar você a expressar algumas necessidades.  Por favor, olhe em direção ao cartão que expressa a sua necessidade')
+    video = VideoCaptureAsync(0) 
+    video.start()
+
+    pyautogui.press('tab')
+
     while True:
         (grabed, frame) = video.read() 
         if not grabed:
             break
         
-        coords,_ = eyeTrack.getCoordenada(frame, debug=True)
+        coords,frame = eyeTrack.getCoordenada(frame,debug=False)
                     
         if coords:
             direcao = eyeTrack.getEyeDirection(coords)
-        
-            if direcao == Direction.DIREITA or direcao == Direction.ESQUERDA:
-                gui.moverSelecao(direcao)
-
-            if direcao == Direction.FECHADO:
-                if contadorOlhosFechados == 0:
-                    gui.falar("Olhos fechados")
+    
+            if direcao == Direction.DIREITA:    
+                gui.speech_assistant('direita')
+                pyautogui.press('tab')
+                
+            elif direcao == Direction.ESQUERDA:
+                gui.speech_assistant('esquerda')
+                pyautogui.hotkey('shift', 'tab')
+                
+            elif direcao == Direction.CIMA:
+                gui.speech_assistant('cima')
+                if gui.activateYT:
+                    pyautogui.press('enter')                    
                 else:
-                    gui.falar(int2Text[contadorOlhosFechados])
+                    pyautogui.press('space')                    
                 
+            elif direcao == Direction.FECHADO:
+                if contadorOlhosFechados == 0:
+                    gui.speech_assistant("Olhos fechados")
+                else:
+                    gui.speech_assistant(int2Text[contadorOlhosFechados])
+                    
                 if contadorOlhosFechados == 3:
-                    gui.falar('Saindo do programa')
+                    gui.speech_assistant('Saindo do programa')  
+                    gui.root.destroy()
                     break
-                contadorOlhosFechados += 1
+                     
+                contadorOlhosFechados += 1              
                 
-            else:
-                contadorOlhosFechados = 0
-                if direcao == Direction.DIREITA:
-                    gui.falar("Direita")
-                elif direcao == Direction.ESQUERDA:
-                    gui.falar("Esquerda")
-                elif direcao == Direction.CIMA:
-                    gui.falarSelecao()
-        
-        if cv2.waitKey(5)  & 0xFF == ord('q'): #Exit program when the user presses 'q'
-            break
-
-    cv2.destroyAllWindows()
+    video.stop()

@@ -1,20 +1,18 @@
 import cv2
 import numpy as np
 import dlib
-from gui import UserInterface
 from direcao import Direction
 from scipy.spatial import distance as dist
 
 class EyeTrack:
         
-    def __init__(self, gui : UserInterface):
+    def __init__(self):
         self.detector = dlib.get_frontal_face_detector() #Face detector
         self.predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat") #Landmark identifier. Set the filename to whatever you named the downloaded file
-        self.gui = gui
 
-    #Esta função calcula a distância euclidiana entre os pontos verticais e horizontais definidos ao redor dos olhos. 
-    #Dessa forma calculamos a área de abertura dos olhos do indivíduo.
     def eye_aspect_ratio(self, eye):
+        #Esta função calcula a distância euclidiana entre os pontos verticais e horizontais definidos ao redor dos olhos. 
+        #Dessa forma calculamos a área de abertura dos olhos do indivíduo.
         #compute the euclidean distances between the two sets vertical eye landmarks (x, y)-coordinates
         A = dist.euclidean(eye[1], eye[5])
         B = dist.euclidean(eye[2], eye[4])
@@ -59,6 +57,9 @@ class EyeTrack:
 
         faces = self.detector(gray, 1) #Detect the faces in the image
         
+        if not faces:
+            return (-1),frame
+            
         for f in faces:
             
             #print("Number of faces detected: {}".format(len(faces))) 
@@ -187,7 +188,7 @@ class EyeTrack:
                 # com a ajuda da qual podemos encontrar algumas propriedades específicas de uma imagem, como raio, área, 
                 # centróide etc. 
                 
-        #---------------------calculando o centro do olho direito ------------------------------------------#
+         #---------------------calculando o centro do olho direito ------------------------------------------#
                 if len(contours)>0:
                     #Find the index of the largest contour
                     areas = [cv2.contourArea(c) for c in contours]
@@ -199,11 +200,11 @@ class EyeTrack:
                         cx = int(M['m10']/M['m00'])
                         cy = int(M['m01']/M['m00'])
                         if debug:
-                            #cv2.line(roi,(cx,cy),(cx,cy),(0,0,255),3)
-                            cv2.line(roi, (cx - 3,cy), (cx + 3, cy), (0,0,255))
-                            cv2.line(roi, (cx,cy - 3), (cx, cy + 3), (0,0,255))
+                            cv2.line(roi,(cx,cy),(cx,cy),(0,0,255),3)
+                            #cv2.line(roi, (cx - 3,cy), (cx + 3, cy), (0,0,255))
+                            #cv2.line(roi, (cx,cy - 3), (cx, cy + 3), (0,0,255))
                             
-        #---------------------calculando o centro do olho esquerdo ------------------------------------------#
+         #---------------------calculando o centro do olho esquerdo ------------------------------------------#
                 if len(lcontours)>0:
                     #Find the index of the largest contour
                     areas = [cv2.contourArea(c) for c in lcontours]
@@ -215,9 +216,9 @@ class EyeTrack:
                         lcx = int(M['m10']/M['m00'])
                         lcy = int(M['m01']/M['m00'])
                         if debug:
-                            #cv2.line(lefteye,(lcx,lcy),(lcx,lcy),(0,0,255),3)
-                            cv2.line(lefteye, (lcx - 3, lcy), (lcx + 3, lcy), (0,0,255))
-                            cv2.line(lefteye, (lcx, lcy - 3), (lcx, lcy + 3), (0,0,255))
+                            cv2.line(lefteye,(lcx,lcy),(lcx,lcy),(0,0,255),3)
+                            #cv2.line(lefteye, (lcx - 3, lcy), (lcx + 3, lcy), (0,0,255))
+                            #cv2.line(lefteye, (lcx, lcy - 3), (lcx, lcy + 3), (0,0,255))
 
                 center_l = [lcx + left_x_coord,lcy + left_y_coord]
                 center_r = [cx + right_x_coord,cy + right_y_coord]
@@ -241,9 +242,12 @@ class EyeTrack:
             return coords, frame
 
     def distancia_maior_porc(self, dist_1, dist_2, porcento):
+        r = True
         #indica se a dist_1 é tantos porcentos maior que a dist_2 -> return true or false 
-        x = (dist_1*100)/dist_2
-        return (x-100) >= porcento
+        if dist_2 != 0:
+            x = (dist_1*100)/dist_2
+            r = (x-100) >= porcento
+        return r
         
     def calculateEyeDirection(self, coords): 
         
@@ -277,11 +281,11 @@ class EyeTrack:
 
 
         direcaoOlho = -1
-        if self.distancia_maior_porc(dist_re_lc, dist_re_rc, 50) and self.distancia_maior_porc(dist_le_lc, dist_le_rc, 50):
-            direcaoOlho = Direction.DIREITA
-        elif self.distancia_maior_porc(dist_re_rc, dist_re_lc, 50) and self.distancia_maior_porc(dist_le_rc, dist_le_lc, 50):
-            direcaoOlho = Direction.ESQUERDA 
-        elif self.distancia_maior_porc(dist_re_dn, dist_re_up, 50) and self.distancia_maior_porc(dist_le_dn, dist_le_up, 50):
+        if self.distancia_maior_porc(dist_re_lc, dist_re_rc, 65) and self.distancia_maior_porc(dist_le_lc, dist_le_rc, 65):
+            direcaoOlho = Direction.ESQUERDA
+        elif self.distancia_maior_porc(dist_re_rc, dist_re_lc, 65) and self.distancia_maior_porc(dist_le_rc, dist_le_lc, 65):
+            direcaoOlho = Direction.DIREITA 
+        elif self.distancia_maior_porc(dist_re_dn, dist_re_up, 65) and self.distancia_maior_porc(dist_le_dn, dist_le_up, 65):
             direcaoOlho = Direction.CIMA
         else:
             direcaoOlho = Direction.CENTRO
@@ -289,11 +293,13 @@ class EyeTrack:
         return direcaoOlho
     
     def olhoFechado(self, coords):
-        threshold = 0.17
+        threshold = 0.15
         return coords['ear_left'] < threshold and coords['ear_right'] < threshold
 
     def getEyeDirection(self, coords):
-        if self.olhoFechado(coords):
+        if coords == (-1):
+            return Direction.CENTRO
+        elif self.olhoFechado(coords):
             return Direction.FECHADO
         else:  
             return self.calculateEyeDirection(coords)

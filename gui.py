@@ -1,121 +1,116 @@
-import cv2
-import numpy as np
+import tkinter as tk
+import threading
+from PIL import ImageTk, Image
 import pyttsx3
-import win32api
-from direcao import Direction
-from PIL import Image, ImageDraw, ImageFont
+import webbrowser
+import pyautogui
+import time
 
-class UserInterface:
-    def __init__(self, trackbarSize=3):
-        self.font = cv2.FONT_HERSHEY_SIMPLEX
-        self.bottomLeftCornerOfText = (100,500)
-        self.fontScale = 1
-        self.fontColor = (255,255,255)
-        self.lineType = 2
+
+class HoverButton(tk.Button):
+    def __init__(self, master, **kw):
+        tk.Button.__init__(self,master=master,**kw)
+        self.bind("<FocusIn>", self.on_focus_in)
+        self.bind("<FocusOut>", self.on_focus_out)
+
+    def on_focus_in(self, e):
+        self['background'] = 'blue'
+
+    def on_focus_out(self, e):
+        self['background'] = 'black'
+
+class Interface(threading.Thread):
+
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.start()
         
-        agua,comida,saliva,pescoco,youtube,coceira,dor,mudar_posicao,falta_ar,bpap = self.put_img_needs()
-        image_linha1 = np.concatenate((agua, comida, saliva, pescoco, youtube), axis=1)
-        image_linha2 = np.concatenate((coceira, dor, mudar_posicao, falta_ar, bpap), axis=1)
+    def callback(self):
+        self.root.quit()
 
-        self.frases = ["água, por favor", "estou com fome", "limpe minha saliva", "meu pescoço doi", "quero ver tv", 
-                       "Estou com coceira", "estou com dor", "quero mudar de posição", "estou com falta de ar", "ligue o bi pap"]
+    def run(self):
+        self.root = self.create_window("Smart Eye Communicator", "imgs_png/icone_olho.ico", 1350,600)
+        self.root.protocol("WM_DELETE_WINDOW", self.callback)
         
-        self.guiPainel = np.concatenate((image_linha1, image_linha2), axis=0)
-        self.guiPainelContorno = np.copy(self.guiPainel)
-        self.proporcao_tela = 1.1
-        self.width = win32api.GetSystemMetrics(0)
-        self.height = win32api.GetSystemMetrics(1)
-        self.indice_selecao = 0
-
-        self.mean_y = int(self.width*self.proporcao_tela/2)
-        self.mean_x = int(self.height*self.proporcao_tela/2)
-
-        self.contornaImagem(self.indice_selecao)
-        self.engine = pyttsx3.init()
-        self.trackbarSize = trackbarSize
+        #tk.Label(self.root, text="Smart Eye Communicator", bg = "light green", fg = "dark green",font = "Helvetica 30 bold").grid(row=0,column=0, pady=10,columnspan= 3)    
         
-    def upload_img(self, image, slogan):
-        obj = cv2.resize(cv2.imread(image), (256, 226))
-        frameTexto = np.zeros([30,256,3],dtype=np.uint8)
-        cv2.putText(frameTexto,slogan,(10,20),self.font,0.8,self.fontColor,self.lineType)
-        obj = np.concatenate((obj, frameTexto), axis=0)
-        return obj
-
-    def put_img_needs(self):
-        agua = self.upload_img('imgs/agua.jpg','Estou com sede')
-        comida = self.upload_img('imgs/comida.jpg', 'Estou com fome')
-        saliva = self.upload_img('imgs/limpar_saliva.jpg', 'Limpar saliva')
-        pescoco = self.upload_img('imgs/pescoco.jpg', 'Dor no pescoco')
-        youtube = self.upload_img('imgs/youtube.jpg', 'Ver TV')
-        coceira = self.upload_img('imgs/coceira.jpg', 'Estou com coceira')
-        dor = self.upload_img('imgs/dor.jpg', 'Estou com dor')
-        mudar_posicao = self.upload_img('imgs/mudar_posicao.jpg', 'Mudar de posicao')
-        falta_ar = self.upload_img('imgs/falta_de_ar.jpg', 'Falta de ar')
-        bpap = self.upload_img('imgs/bpap.jpg', 'Bpap')
-        
-        return agua,comida,saliva,pescoco,youtube,coceira,dor,mudar_posicao,falta_ar,bpap
-
-    def nothing(self, x):
-        pass
-
-    def show(self):
-        cv2.imshow("image", self.guiPainelContorno)
-    
-    def updateTrackbar(self, value):
-        cv2.setTrackbarPos('Ativando','image',value)
-    
-    def falar(self, texto):
-        self.engine.say(texto)
-        self.engine.setProperty('rate',200)
-        self.engine.runAndWait()
-    
-    def falarSelecao(self):
-        self.falar(self.frases[self.indice_selecao])
-
-    def contornaImagem(self, indice):
-        self.guiPainelContorno = np.copy(self.guiPainel)
-        iniX = int(indice/5)*255
-        fimX = (int(indice/5)+1)*255
-        iniY = int(indice%5)*255
-        fimY = (int(indice%5)+1)*255
-        cor = [0, 0, 255] #BGR
-        self.guiPainelContorno[iniX:iniX+10,iniY:fimY]=cor
-        self.guiPainelContorno[fimX-10:fimX,iniY:fimY]=cor
-        self.guiPainelContorno[iniX:fimX,iniY:iniY+10]=cor
-        self.guiPainelContorno[iniX:fimX,fimY-10:fimY]=cor
-        #return self.guiPainelContorno
-    
-    def moverSelecao(self, eyeDirection):
-        if eyeDirection == Direction.DIREITA:
-            if self.indice_selecao < 9:
-                self.indice_selecao += 1
-            else:
-                self.indice_selecao = 0
-        elif eyeDirection == Direction.ESQUERDA:
-            if self.indice_selecao > 0:
-                self.indice_selecao -= 1
-            else:
-                self.indice_selecao = 9
-        self.contornaImagem(self.indice_selecao)
-        self.show()
-    
-    def showTexto(self, texto):
-        frame = np.zeros([int(self.height*self.proporcao_tela),int(self.width*self.proporcao_tela),3],dtype=np.uint8)
-        cv2.putText(frame,texto,self.bottomLeftCornerOfText,self.font,self.fontScale,self.fontColor,self.lineType)
-
-        winname = "image"
-        cv2.namedWindow(winname)
-        cv2.moveWindow(winname, 120,0)
-        cv2.imshow(winname, frame)
-
+        img_hunger,img_thrist,img_itching,img_breath,img_bipap,img_neck_pain,img_pain,img_change_position,img_saliva,img_youtube = self.upload_img()
             
-if __name__ == '__main__':
-    gui = UserInterface()
-    while True:
-        gui.show()
-       
-        if cv2.waitKey(50)  & 0xFF == ord('q'): #Exit program when the user presses 'q'
-            break
+        self.btn_thrist = self.btn_needs(self.root, img_thrist,"Thrist",1,1, lambda: self.speech_assistant("Estou com sede"))
+        self.btn_hunger = self.btn_needs(self.root, img_hunger,"Hunger",1,2, lambda: self.speech_assistant("Estou com fome"))
+        self.btn_itching = self.btn_needs(self.root, img_itching,"Itching",1,3, lambda: self.speech_assistant("Estou com coceira"))
+        self.btn_itching = self.btn_needs(self.root, img_breath,"Shortness of Breath",1,4, lambda: self.speech_assistant("Estou com falta de ar"))
+        self.btn_bipap = self.btn_needs(self.root, img_bipap,"Turning BiPAP",1,5, lambda: self.speech_assistant("Preciso do Bi papi"))
+        self.btn_neck_pain = self.btn_needs(self.root, img_neck_pain,"Neck Pain",2,1, lambda: self.speech_assistant("Estou com dor no pescoço"))
+        self.btn_pain = self.btn_needs(self.root, img_pain,"Pain",2,2, lambda: self.speech_assistant("Estou com dor"))
+        self.btn_position = self.btn_needs(self.root, img_change_position,"Change Position",2,3, lambda: self.speech_assistant("Preciso mudar de posição"))
+        self.btn_saliva = self.btn_needs(self.root, img_saliva,"Cleanring Saliva",2,4, lambda: self.speech_assistant("Por favor, limpe minha saliva"))
+        self.btn_youtube = self.btn_needs(self.root, img_youtube,"Youtube",2,5, lambda: self.playYT())
 
-    cv2.destroyAllWindows()
+        self.activateYT = False
+        self.root.mainloop()
 
+    def create_window(self, titulo, icone, largura, altura, bg="light green"):
+        window = tk.Tk() 
+        window.title(titulo)
+        window.iconbitmap(icone)
+        window.geometry("%dx%d" % (largura, altura))
+        window.configure(bg = bg)
+        self.center_window(window) 
+        return window  
+    
+    def center_window(self, win):
+        win.update_idletasks()
+        size = tuple(int(_) for _ in win.geometry().split('+')[0].split('x'))
+        screen_width = win.winfo_screenwidth()
+        screen_height = win.winfo_screenheight()
+        x = screen_width/2 - size[0]/2
+        y = screen_height/2 - size[1]/2
+        win.geometry("+%d+%d" % (x, y))
+     
+    def upload_img(self, width=170, height=170):
+        hunger = ImageTk.PhotoImage(Image.open("imgs_png/comida.png").resize((width,height), Image.ANTIALIAS))
+        thrist = ImageTk.PhotoImage(Image.open("imgs_png/agua.png").resize((width,height), Image.ANTIALIAS))
+        itching = ImageTk.PhotoImage(Image.open("imgs_png/coceira.png").resize((width,height), Image.ANTIALIAS))
+        breath = ImageTk.PhotoImage(Image.open("imgs_png/falta_ar.png").resize((width,height), Image.ANTIALIAS))
+        bipap = ImageTk.PhotoImage(Image.open("imgs_png/bipap.png").resize((width,height), Image.ANTIALIAS))
+        neck_pain = ImageTk.PhotoImage(Image.open("imgs_png/dor_pescoco.png").resize((width,height), Image.ANTIALIAS))
+        pain = ImageTk.PhotoImage(Image.open("imgs_png/dor.png").resize((width,height), Image.ANTIALIAS))
+        change_position = ImageTk.PhotoImage(Image.open("imgs_png/mudar_posicao.png").resize((width,height), Image.ANTIALIAS))
+        saliva = ImageTk.PhotoImage(Image.open("imgs_png/saliva.png").resize((width,height), Image.ANTIALIAS))
+        youtube = ImageTk.PhotoImage(Image.open("imgs_png/youtube.png").resize((width,height), Image.ANTIALIAS))
+        
+        return hunger,thrist,itching,breath,bipap,neck_pain,pain,change_position,saliva,youtube
+        
+    def btn_needs(self,root, photo, txt, line, column, function):
+        return HoverButton(root, image= photo, compound=tk.TOP, text=txt, font = "Helvetica 11 bold",
+                         fg="white", bg="black",takefocus=True, activebackground ="red",  
+                         padx=5, pady=5, command = function).grid(row=line, column= column, padx=40, pady=40)
+  
+    def playYT(self, url="https://www.youtube.com"):
+        self.speech_assistant("Indo para o iutube")
+        try:
+            client = webbrowser.get()
+            client.open(url)
+            self.activateYT = True
+            time.sleep(5) 
+            for i in range(3):
+                pyautogui.press('tab')
+
+            pyautogui.press('enter')
+
+        except webbrowser.Error as e:
+            print(e)
+        
+    def speech_assistant(self, text):
+        try:
+            engine = pyttsx3.init()
+            #rate = engine.getProperty('rate')
+            #engine.setProperty('rate', rate+20)
+            engine.say(text)
+            engine.runAndWait()  
+        except RuntimeError:
+            pass
+    
+if __name__ == "__main__":
+    gui = Interface()

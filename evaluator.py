@@ -1,13 +1,13 @@
 import cv2
 import numpy as np
 from eyeTracker import EyeTrack
-from gui import UserInterface
 from direcao import Direction
 #--------------------------------------------
 import skimage
 from skimage.util import random_noise
 import sys
-    
+import time
+
 def dirEnum2Str(direcao):
     dirstr = ""
     if direcao == Direction.DIREITA:
@@ -24,12 +24,6 @@ def dirEnum2Str(direcao):
         dirstr = "Nenhuma"
     
     return dirstr                 
-
-def noise_sp(frame, amount_x):
-    #https://theailearner.com/2019/05/07/add-different-noise-to-an-image/
-    noise_img = random_noise(frame, mode='s&p',amount= amount_x)
-    noise_img = np.array(255*noise_img, dtype = 'uint8') 
-    return noise_img
 
 def noise_gauss(frame, mean_x):
     #https://theailearner.com/2019/05/07/add-different-noise-to-an-image/
@@ -71,21 +65,43 @@ def rotacao(frame, graus):
 
 def aplicarTransformacao(frame, tipoTransformacao):
     new_frame = frame
+    
+    if tipoTransformacao == "normal":
+        new_frame = frame
 
-    if tipoTransformacao == "noise1":
+    elif tipoTransformacao == "noise1":
         new_frame = noise_gauss(frame,0.01)
     elif tipoTransformacao == "noise2":
-        new_frame = noise_gauss(frame,0.02)
+        new_frame = noise_gauss(frame,0.03)
+    elif tipoTransformacao == "noise3":
+        new_frame = noise_gauss(frame,0.05)
     
+    elif tipoTransformacao == "blur1":
+        new_frame = blur(frame,"gaussian",3)
+    elif tipoTransformacao == "blur2":
+        new_frame = blur(frame,"gaussian",5)
+    elif tipoTransformacao == "blur3":
+        new_frame = blur(frame,"gaussian",9)
     
+    elif tipoTransformacao == "gamma1":
+        new_frame = adjust_gamma(frame,0.5)
+    elif tipoTransformacao == "gamma2":
+        new_frame = adjust_gamma(frame,1.5)
+    elif tipoTransformacao == "gamma3":
+        new_frame = adjust_gamma(frame,2.0)
+    
+    elif tipoTransformacao == "rotacao1":
+        new_frame = rotacao(frame,5)
+    elif tipoTransformacao == "rotacao2":
+        new_frame = rotacao(frame,10)
+    elif tipoTransformacao == "rotacao3":
+        new_frame = rotacao(frame,15)
+             
     return new_frame
 
 def run(pessoa_id, transformacoes):
-    
-    ACTION_THRESHOLD = 2
-    
-    gui = UserInterface(ACTION_THRESHOLD+1)
-    eyeTrack = EyeTrack(gui)
+        
+    eyeTrack = EyeTrack()
     
     pathVideos = "Base\\Videos\\"
 
@@ -115,17 +131,16 @@ def run(pessoa_id, transformacoes):
                 direcao = eyeTrack.getEyeDirection(coords)
                 direcaoStr = dirEnum2Str(direcao)
 
-                cv2.putText(frame, str(frameNumber) + " " + direcaoStr, (35, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.25, 
-                            (100, 50, 100), 5)
+                cv2.putText(frame, str(frameNumber) + " " + direcaoStr, (35, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.25, (100, 50, 100), 5)
                 
                 writer_vid.write(frame)
                 f_csv_tabela.write(str(pessoa_id) + ';' + str(frameNumber) + ';' + direcaoStr + '\n')
                 
-                #cv2.imshow("Output", frame)
+                cv2.imshow("Output", frame)
                 
-                # key = cv2.waitKey(1) & 0xFF
-                # if key == ord("q"):
-                #     break
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord("q"):
+                    break
             
                 frameNumber += 1
         
@@ -134,11 +149,9 @@ def run(pessoa_id, transformacoes):
         f_csv_tabela.close()
             
 if __name__ == '__main__':
-    transformacoes = ["noise1", "noise2", "normal"]
-    for pessoa_id in range(1,10):
+    #transformacoes = ['normal','noise1','noise2','noise3','blur1','blur2','blur3','gamma1','gamma2','gamma3','rotacao1','rotacao2','rotacao3']
+    transformacoes = ['normal']
+    #transformacoes = ['rotacao1','rotacao2','rotacao3']
+    for pessoa_id in range(1,2):
         print(pessoa_id)
         run(pessoa_id, transformacoes)
-
-
-    
-    

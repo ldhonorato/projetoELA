@@ -5,8 +5,6 @@ import sklearn.metrics as metrics
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-
 path_labels = "Base\\Labels\\"
 path_resultados = ""
 
@@ -21,9 +19,9 @@ lista_titulosGraficos = ["normal",
                   "noise1", "noise2", "noise3", 
                   "blur1", "blur2", "blur3", 
                   "gamma1", "gamma2", "gamma3",
-                  "rotacao1", "rotacao2", "rotacao3"]
+                  "rotate1", "rotate2", "rotate3"]
 #transformacoes = ["normal"]
-numVideos = 2
+numVideos = 16
 numClasses = 5
 
 le = preprocessing.LabelEncoder()
@@ -80,7 +78,8 @@ for transf in transformacoes:
     
     
 #Gerar gráficos
-labels = list(le.classes_)
+#labels = list(le.classes_) #['Centro', 'Cima', 'Direita', 'Esquerda', 'Fechado']
+labels = ['Center', 'Up', 'Right', 'Left', 'Close']
 
 #Matriz de confusão
 size_titulo, size_axis, size_annot = 30, 20, 20
@@ -90,12 +89,13 @@ rotation = 45
 def saveConfusionMatrix(matrix, title):
     df_cm = pd.DataFrame(matrix, range(numClasses), range(numClasses))
     fig, ax1 = plt.subplots(figsize=fig_size)
-    #fig, ax1 = plt.subplots(figsize=(8,6))
     sn.set(font_scale=1.4) # for label size
-    sn.heatmap(df_cm, xticklabels=labels, yticklabels=labels, annot=True, annot_kws={"size": size_annot}, fmt='g', linewidths=0.8, linecolor='white') # font size
+    sn.heatmap(df_cm, xticklabels=labels, yticklabels=labels, annot=True, annot_kws={"size": size_annot}, fmt='g', linewidths=0.8, linecolor='white', cmap='YlGnBu') # font size
     plt.yticks(rotation=0, fontsize=size_axis) 
     plt.xticks(rotation=rotation, fontsize=size_axis) 
     ax1.set_title(title, fontsize=size_titulo)
+    ax1.set_xlabel('True Class', fontsize=size_axis )
+    ax1.set_ylabel('Predicted Class', fontsize=size_axis)
     plt.savefig(title + '.png', bbox_inches='tight')
 
 cm_sum = np.zeros((numClasses, numClasses))
@@ -187,6 +187,7 @@ def saveBoxPlot2(matrix, title):
     
     ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     plt.savefig(title + '.png' )
+    plt.close('all') 
     np.save(title, matrix)
 
 for i, transf in enumerate(transformacoes):
